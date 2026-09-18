@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>とけいの かんさつ と まなび</title>
+  
+  <!-- Web App & PWA Settings -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="時計まなび">
+  <meta name="theme-color" content="#ffffff">
+
+  <!-- SVG App Icon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23ffffff' stroke='%23f97316' stroke-width='8'/><line x1='50' y1='50' x2='50' y2='22' stroke='%23e11d48' stroke-width='6' stroke-linecap='round'/><line x1='50' y1='50' x2='72' y2='50' stroke='%231e293b' stroke-width='8' stroke-linecap='round'/><circle cx='50' cy='50' r='6' fill='%23e11d48'/></svg>">
+
+  <!-- Google Fonts & Tailwind CSS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;600&family=M+PLUS+Rounded+1c:wght@300;400;700;800;900&family=Outfit:wght@300;400;600;700;800&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      background-color: #f1f5f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+      color: #1e293b;
+      overflow: hidden;
+    }
+
+    html {
+      height: -webkit-fill-available;
+    }
+
+    .viewport-16-9 {
+      width: min(100vw, calc(100vh * 16 / 9));
+      height: min(100vh, calc(100vw * 9 / 16));
+      aspect-ratio: 16 / 9;
+      background-color: #ffffff;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    /* ピンチ拡大用のラッパー領域 */
+    .zoomable-area {
+      flex: 1;
+      width: 100%;
+      height: calc(100% - 60px);
+      position: relative;
+      overflow: hidden;
+      transform-origin: center center;
+      will-change: transform;
+      touch-action: none;
+    }
+
+    /* 3つの時計を結ぶ太さ1cm (約38px) の線 */
+    .connecting-line {
+      position: absolute;
+      top: 50%;
+      left: 10%;
+      right: 10%;
+      height: 38px;
+      background-color: #FAF5CF;
+      transform: translateY(-50%);
+      z-index: 1;
+      pointer-events: none;
+      border-radius: 19px;
+    }
+
+    .clocks-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: space-evenly;
+      align-items: center;
+      padding: 0.2rem 1rem 0.2rem 1rem;
+      gap: 0.5rem;
+      position: relative;
+      z-index: 2;
+    }
+
+    .clock-card {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 0.8rem;
+      position: relative;
+      z-index: 5;
+    }
+
+    /* 左右の時計の上の「はじめ」「おわり」の表示 */
+    .clock-title-badge {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #0f172a;
+      background: #f1f5f9;
+      padding: 2px 24px;
+      border-radius: 9999px;
+      margin-bottom: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 56px;
+      justify-content: center;
+    }
+
+    .arrow-badge-container {
+      position: relative;
+      margin-bottom: 2px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .arrow-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: #ffffff;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 2.2rem;
+      padding: 2px 28px;
+      border-radius: 9999px;
+      border: 2px solid #fdba74;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .arrow-btn:hover {
+      background-color: #fff7ed;
+    }
+
+    .elapsed-dropdown {
+      position: absolute;
+      top: 110%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+      padding: 8px;
+      z-index: 100;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      width: 260px;
+    }
+
+    .dropdown-opt {
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-weight: 400;
+      font-size: 0.9rem;
+      text-align: center;
+      background: #f1f5f9;
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .dropdown-opt:hover {
+      background: #ea580c;
+      color: #ffffff;
+    }
+
+    .svg-wrapper {
+      width: 100%;
+      height: 0;
+      padding-bottom: 100%;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .svg-wrapper-large {
+      max-width: min(113.1vw / 3, 95.6vh);
+      max-height: min(113.1vw / 3, 95.6vh);
+      padding-bottom: min(113.1vw / 3, 95.6vh);
+    }
+
+    .svg-wrapper-center {
+      max-width: min(82.3vw / 3, 69.0vh);
+      max-height: min(82.3vw / 3, 69.0vh);
+      padding-bottom: min(82.3vw / 3, 69.0vh);
+    }
+
+    svg.clock-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      touch-action: none;
+    }
+
+    svg.clock-svg-interactive {
+      cursor: grab;
+      touch-action: none;
+    }
+
+    svg.clock-svg-interactive:active {
+      cursor: grabbing;
+    }
+
+    svg.clock-svg-center {
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    svg.clock-svg-center:hover {
+      transform: scale(1.02);
+    }
+
+    /* デジタル時計表示ボックス */
+    .digital-clock-box {
+      margin-top: -28px;
+      background-color: #ffffff;
+      border: 2px solid #cbd5e1;
+      border-radius: 16px;
+      padding: 2px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-width: 220px;
+      height: 72px;
+      cursor: pointer;
+      font-family: 'Outfit', 'Roboto', sans-serif;
+      z-index: 10;
+    }
+
+    .digital-input {
+      width: 85px;
+      text-align: center;
+      font-family: 'Outfit', 'Roboto', sans-serif;
+      font-size: 3rem;
+      font-weight: 700;
+      color: #0f172a;
+      border: none;
+      outline: none;
+      background: transparent;
+    }
+
+    .digital-input:focus {
+      background-color: #f0f9ff;
+      color: #0284c7;
+      border-radius: 6px;
+    }
+
+    /* 時刻表示を隠すマスク: 「？」だけの表示 */
+    .masked-digital-box {
+      font-family: 'M PLUS Rounded 1c', sans-serif;
+      font-size: 3rem;
+      font-weight: 800;
+      color: #0284c7;
+      cursor: pointer;
+      width: 100%;
+      text-align: center;
+    }
+
+    .bottom-bar {
+      height: 60px;
+      background-color: #ffffff;
+      border-top: 1px solid #e2e8f0;
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      z-index: 20;
+      margin-top: auto;
+      width: 100%;
+    }
+
+    .btn-action {
+      background-color: #ffffff;
+      border: 1px solid #cbd5e1;
+      color: #334155;
+      border-radius: 10px;
+      font-weight: 300;
+      font-size: 0.95rem;
+      padding: 8px 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease-in-out;
+      white-space: nowrap;
+    }
+
+    .btn-action:hover {
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+
+    .btn-action.active {
+      background-color: #e2e8f0;
+      border-color: #94a3b8;
+      color: #0f172a;
+      font-weight: 300;
+    }
+
+    /* 「つぎ」ボタン: ピンク */
+    .btn-next-pink {
+      background-color: #fdf2f8 !important;
+      border: 1.5px solid #f472b6 !important;
+      color: #db2777 !important;
+      font-weight: 700 !important;
+    }
+
+    .btn-next-pink:hover {
+      background-color: #fce7f3 !important;
+      border-color: #ec4899 !important;
+      color: #be185d !important;
+    }
+
+    .btn-mode {
+      background-color: #f0f9ff;
+      border: 1px solid #0284c7;
+      color: #0369a1;
+      border-radius: 10px;
+      font-weight: 300;
+      font-size: 0.95rem;
+      padding: 8px 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease-in-out;
+      white-space: nowrap;
+    }
+
+    .btn-mode:hover {
+      background-color: #e0f2fe;
+    }
+
+    .btn-mode.active {
+      background-color: #bae6fd;
+      border-color: #0284c7;
+      color: #0c4a6e;
+      font-weight: 300;
+    }
+
+    /* 細枠・薄黄色背景・オレンジ文字のボタンデザイン */
+    .btn-capsule {
+      border-radius: 9999px !important;
+      font-weight: 300 !important;
+      background-color: #fefce8 !important;
+      border: 1px solid #f97316 !important;
+      color: #ea580c !important;
+      transition: all 0.15s ease-in-out;
+    }
+
+    .btn-capsule:hover {
+      background-color: #fef9c3 !important;
+    }
+
+    .btn-capsule.target-active {
+      background-color: #fef08a !important;
+      border-color: #ea580c !important;
+      color: #c2410c !important;
+      box-shadow: 0 1px 3px rgba(234, 88, 12, 0.2);
+    }
+  </style>
+
+  <script>
+    const manifestData = {
+      "name": "とけいの かんさつ と まなび",
+      "short_name": "時計まなび",
+      "description": "子ども向け時計の観察と経過時間学習アプリ",
+      "start_url": "./",
+      "display": "standalone",
+      "orientation": "landscape",
+      "background_color": "#ffffff",
+      "theme_color": "#0284c7"
+    };
+    const blob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
+    const manifestUrl = URL.createObjectURL(blob);
+    const link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = manifestUrl;
+    document.head.appendChild(link);
+  </script>
+</head>
+<body>
+
+  <div class="viewport-16-9" id="viewportContainer">
+
+    <!-- ピンチ拡大（ズーム）の対象領域 -->
+    <div class="zoomable-area" id="zoomableArea">
+      <!-- 1cm (38px) 結ぶ線 (#FAF5CF) -->
+      <div class="connecting-line"></div>
+
+      <div class="clocks-container">
+        
+        <!-- 1. 左時計：はじめ -->
+        <div class="clock-card">
+          <div class="clock-title-badge">はじめ</div>
+          <div class="svg-wrapper svg-wrapper-large">
+            <svg class="clock-svg clock-svg-interactive" viewBox="-220 -220 440 440" id="clockSvgStart"></svg>
+          </div>
+          <div class="digital-clock-box" id="startDigitalContainer"></div>
+        </div>
+
+        <!-- 2. 中央時計：けいか (縁はオレンジ) -->
+        <div class="clock-card">
+          <div class="arrow-badge-container" id="arrowBadgeContainer">
+            <div class="arrow-btn" id="arrowBtn" onclick="onBadgeClick(event)">
+              <span id="arrowText" class="flex items-center gap-2"></span>
+            </div>
+
+            <div class="elapsed-dropdown" id="elapsedDropdown" style="display: none;"></div>
+          </div>
+
+          <div class="svg-wrapper svg-wrapper-center">
+            <svg class="clock-svg clock-svg-center" viewBox="-220 -220 440 440" id="clockSvgCenter" onclick="triggerCenterClockClick()"></svg>
+          </div>
+        </div>
+
+        <!-- 3. 右時計：おわり -->
+        <div class="clock-card">
+          <div class="clock-title-badge">おわり</div>
+          <div class="svg-wrapper svg-wrapper-large">
+            <svg class="clock-svg clock-svg-interactive" viewBox="-220 -220 440 440" id="clockSvgEnd"></svg>
+          </div>
+          <div class="digital-clock-box" id="endDigitalContainer"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 拡大時も最下部に固定表示される操作ボタンバー -->
+    <div class="bottom-bar">
+      <div class="flex items-center gap-2">
+        <button class="btn-mode active" id="btnModeMove" onclick="switchMode('move')">
+          設定をかえる
+        </button>
+        <button class="btn-mode" id="btnModeQuiz" onclick="switchMode('quiz')">
+          問題を出す
+        </button>
+      </div>
+
+      <div class="flex items-center gap-2" id="targetControls">
+        <button class="btn-action btn-capsule" id="btnTargetStart" onclick="setBlankTarget('start')">
+          はじめをもとめる
+        </button>
+        <button class="btn-action btn-capsule target-active" id="btnTargetElapsed" onclick="setBlankTarget('elapsed')">
+          時間をもとめる
+        </button>
+        <button class="btn-action btn-capsule" id="btnTargetEnd" onclick="setBlankTarget('end')">
+          おわりをもとめる
+        </button>
+        <button class="btn-action btn-capsule" id="btnTargetRandom" style="visibility: hidden;" onclick="setBlankTarget('random')">
+          ランダム
+        </button>
+      </div>
+
+      <div id="quizControls" class="flex items-center gap-2" style="visibility: hidden;">
+        <div class="text-xs text-center leading-tight font-medium text-slate-700 bg-slate-100 px-3 py-1 rounded-lg min-w-[70px]" id="quizCounterText">
+          問題<br><span class="text-sm font-bold">1 / 10</span>
+        </div>
+        <button class="btn-action" onclick="prevQuiz()">まえ</button>
+        <button class="btn-action btn-next-pink" onclick="nextQuiz()">つぎ</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let startTimeMinutes = 8 * 60; // 8:00
+    let endTimeMinutes = 8 * 60 + 23; // 8:23
+    let blankTarget = 'elapsed'; // 'start', 'elapsed', 'end', 'random'
+    let badgeRevealed = false; 
+    let selectedDropdownText = null;
+    let startRevealed = true; 
+    let endRevealed = true;   
+    let startDigitalVisible = false;
+    let endDigitalVisible = false;   
+    let currentMode = 'move'; // 'move', 'quiz'
+    let animProgress = 1.0;
+    let isAnimating = false;
+    let draggingClock = null;
+    let dragPart = 'minute'; // 'hour' or 'minute'
+    let dragLastAngle = null;
+    let quizList = [];
+    let currentQuizIndex = 0;
+
+    let centerClockState = 0; // 0: Masked, 1: Step 1, 2: Step 2
+    let renderPending = false; // 描画スロットリング用のフラグ
+
+    // --- ピンチズーム用の状態変数 ---
+    let currentScale = 1.0;
+    let panX = 0;
+    let panY = 0;
+    let startScale = 1.0;
+    let startDist = 0;
+    let startPanX = 0;
+    let startPanY = 0;
+    let startMidX = 0;
+    let startMidY = 0;
+    let isPinching = false;
+
+    window.onload = function() {
+      setupClockDragListeners('clockSvgStart', 'start');
+      setupClockDragListeners('clockSvgEnd', 'end');
+      setupPinchZoom();
+      generateQuizList(blankTarget);
+      
+      startRevealed = (blankTarget !== 'start');
+      endRevealed = (blankTarget !== 'end');
+      startDigitalVisible = false;
+      endDigitalVisible = false;
+
+      renderAllClocks();
+
+      // 下部ボタン領域を押した時に画面拡大をリセットする処理
+      const bottomBar = document.querySelector('.bottom-bar');
+      if (bottomBar) {
+        bottomBar.addEventListener('click', () => {
+          resetZoom();
+        });
+      }
+
+      document.addEventListener('pointerdown', (e) => {
+        const dd = document.getElementById('elapsedDropdown');
+        const btn = document.getElementById('arrowBtn');
+        if (dd && !dd.contains(e.target) && !btn.contains(e.target)) {
+          closeElapsedDropdown();
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (currentMode !== 'quiz') return;
+        if (e.target && e.target.tagName === 'INPUT') return;
+
+        if (e.key === 'Enter' || e.key === 'ArrowRight') {
+          e.preventDefault();
+          nextQuiz();
+        } else if (e.key === 'Backspace' || e.key === 'ArrowLeft') {
+          e.preventDefault();
+          prevQuiz();
+        }
+      });
+
+      window.addEventListener('resize', alignClocksAndLine);
+      setTimeout(alignClocksAndLine, 50);
+    };
+
+    /* ピンチズーム（拡大・縮小・移動）のセットアップ */
+    function setupPinchZoom() {
+      const zoomArea = document.getElementById('zoomableArea');
+      if (!zoomArea) return;
+
+      zoomArea.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+          isPinching = true;
+          draggingClock = null; // 針ドラッグ処理と干渉しないよう解除
+          const t1 = e.touches[0];
+          const t2 = e.touches[1];
+          startDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+          startScale = currentScale;
+          startPanX = panX;
+          startPanY = panY;
+          startMidX = (t1.clientX + t2.clientX) / 2;
+          startMidY = (t1.clientY + t2.clientY) / 2;
+        }
+      }, { passive: false });
+
+      zoomArea.addEventListener('touchmove', (e) => {
+        if (isPinching && e.touches.length === 2) {
+          e.preventDefault();
+          const t1 = e.touches[0];
+          const t2 = e.touches[1];
+          const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+          
+          if (startDist > 0) {
+            let newScale = startScale * (dist / startDist);
+            newScale = Math.min(Math.max(newScale, 1.0), 3.0); // 1.0倍〜3.0倍
+
+            const midX = (t1.clientX + t2.clientX) / 2;
+            const midY = (t1.clientY + t2.clientY) / 2;
+
+            let newPanX = startPanX + (midX - startMidX);
+            let newPanY = startPanY + (midY - startMidY);
+
+            if (newScale === 1.0) {
+              newPanX = 0;
+              newPanY = 0;
+            }
+
+            currentScale = newScale;
+            panX = newPanX;
+            panY = newPanY;
+
+            zoomArea.style.transform = `translate(${panX}px, ${panY}px) scale(${currentScale})`;
+          }
+        }
+      }, { passive: false });
+
+      zoomArea.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) {
+          isPinching = false;
+        }
+      });
+
+      zoomArea.addEventListener('touchcancel', () => {
+        isPinching = false;
+      });
+    }
+
+    /* ズーム状態を1.0倍（元の画面）にリセットする関数 */
+    function resetZoom() {
+      currentScale = 1.0;
+      panX = 0;
+      panY = 0;
+      const zoomArea = document.getElementById('zoomableArea');
+      if (zoomArea) {
+        zoomArea.style.transition = 'transform 0.25s ease-out';
+        zoomArea.style.transform = 'translate(0px, 0px) scale(1)';
+        setTimeout(() => {
+          zoomArea.style.transition = '';
+          alignClocksAndLine();
+        }, 250);
+      }
+      alignClocksAndLine();
+    }
+
+    /* 時計の中心軸と接続線の位置をぴったり合わせる関数 */
+    function alignClocksAndLine() {
+      const line = document.querySelector('.connecting-line');
+      const startSvg = document.getElementById('clockSvgStart');
+      const centerSvg = document.getElementById('clockSvgCenter');
+      const badgeContainer = document.getElementById('arrowBadgeContainer');
+      const zoomArea = document.getElementById('zoomableArea');
+
+      if (!line || !startSvg || !centerSvg || !zoomArea || !badgeContainer) return;
+
+      const currentMarginTop = parseFloat(badgeContainer.style.marginTop) || 0;
+
+      const startRect = startSvg.getBoundingClientRect();
+      const centerRect = centerSvg.getBoundingClientRect();
+      const zoomRect = zoomArea.getBoundingClientRect();
+
+      const startCenterY = startRect.top + startRect.height / 2;
+      const centerCenterY = centerRect.top + centerRect.height / 2;
+
+      const scale = currentScale || 1.0;
+      const newMarginTop = currentMarginTop + (startCenterY - centerCenterY) / scale;
+
+      badgeContainer.style.marginTop = `${newMarginTop}px`;
+
+      const lineTopInZoomArea = (startCenterY - zoomRect.top) / scale;
+      line.style.top = `${lineTopInZoomArea}px`;
+    }
+
+    function renderAllClocks() {
+      startTimeMinutes = Math.round(startTimeMinutes);
+      endTimeMinutes = Math.round(endTimeMinutes);
+
+      if (endTimeMinutes <= startTimeMinutes) {
+        endTimeMinutes = startTimeMinutes + 1;
+      }
+      let diff = Math.round(endTimeMinutes - startTimeMinutes);
+
+      // 1. Left clock (Start)
+      renderInteractiveClock('clockSvgStart', startTimeMinutes, !startRevealed, 'start');
+      renderDigitalBox('startDigitalContainer', startTimeMinutes, !startDigitalVisible, 'start');
+
+      // 2. Right clock (End)
+      renderInteractiveClock('clockSvgEnd', endTimeMinutes, !endRevealed, 'end');
+      renderDigitalBox('endDigitalContainer', endTimeMinutes, !endDigitalVisible, 'end');
+
+      // 3. Center clock (Elapsed)
+      renderCenterClock('clockSvgCenter', startTimeMinutes, endTimeMinutes);
+
+      // 4. Update arrow badge UI
+      updateArrowBadgeUI(diff);
+      updateDropdownItems();
+      updateTargetButtonsHighlight();
+
+      requestAnimationFrame(alignClocksAndLine);
+    }
+
+    function formatElapsedText(minutes) {
+      let absM = Math.round(Math.abs(minutes));
+      if (absM >= 60) {
+        let h = Math.floor(absM / 60);
+        let m = absM % 60;
+        return m === 0 ? `${h}時間` : `${h}時間${m}分`;
+      }
+      return `${absM}分間`;
+    }
+
+    function updateArrowBadgeUI(diffMinutes) {
+      const arrowText = document.getElementById('arrowText');
+      if (!arrowText) return;
+
+      let activeTarget = blankTarget;
+      if (currentMode === 'quiz' && quizList[currentQuizIndex]) {
+        activeTarget = quizList[currentQuizIndex].target;
+      }
+
+      let displayText = "〇分間";
+
+      if (currentMode === 'quiz') {
+        if (activeTarget === 'elapsed') {
+          if (!badgeRevealed) {
+            displayText = "〇分間";
+          } else {
+            displayText = formatElapsedText(diffMinutes);
+          }
+        } else {
+          displayText = formatElapsedText(diffMinutes);
+        }
+      } else {
+        if (badgeRevealed) {
+          displayText = formatElapsedText(diffMinutes);
+        } else if (selectedDropdownText) {
+          displayText = selectedDropdownText;
+        } else {
+          displayText = "〇分間";
+        }
+      }
+
+      if (activeTarget === 'start') {
+        arrowText.innerHTML = `<span>◀</span> <span>${displayText}</span>`;
+      } else if (activeTarget === 'end') {
+        arrowText.innerHTML = `<span>${displayText}</span> <span>▶</span>`;
+      } else {
+        arrowText.innerHTML = `<span>${displayText}</span>`;
+      }
+    }
+
+    function updateTargetButtonsHighlight() {
+      let activeTarget = blankTarget;
+      if (currentMode === 'quiz' && quizList[currentQuizIndex]) {
+        activeTarget = quizList[currentQuizIndex].target;
+      }
+
+      document.getElementById('btnTargetStart').classList.toggle('target-active', activeTarget === 'start');
+      document.getElementById('btnTargetElapsed').classList.toggle('target-active', activeTarget === 'elapsed');
+      document.getElementById('btnTargetEnd').classList.toggle('target-active', activeTarget === 'end');
+      document.getElementById('btnTargetRandom').classList.toggle('target-active', blankTarget === 'random');
+    }
+
+    function updateDropdownItems() {
+      const dd = document.getElementById('elapsedDropdown');
+      if (!dd) return;
+
+      if (blankTarget === 'start') {
+        dd.innerHTML = `
+          <div class="dropdown-opt" onclick="selectElapsedMinutes(15, '15分まえ')">15分まえ</div>
+          <div class="dropdown-opt" onclick="selectElapsedMinutes(30, '30分まえ')">30分まえ</div>
+          <div class="dropdown-opt" onclick="selectElapsedMinutes(45, '45分まえ')">45分まえ</div>
+          <div class="dropdown-opt" onclick="selectElapsedMinutes(60, '1時間まえ')">1時間まえ</div>
+        `;
+      } else {
+        dd.innerHTML = `
+          <div class="dropdown-opt" onclick="selectElapsedMinutes(15, '15分あと')">15分あと</div>
+          <div class="dropdown-opt" onclick="selectElapsedMinutes(30, '30分あと')">30分あと</div>
+          <div class="dropdown-opt" onclick="selectElapsedMinutes(45, '45分あと')">45分あと</div>
+          <div class="dropdown-opt" onclick="selectElapsedMinutes(60, '1時間あと')">1時間あと</div>
+        `;
+      }
+    }
+
+    function renderInteractiveClock(svgId, totalMinutes, isMasked, clockType) {
+      const svg = document.getElementById(svgId);
+      if (!svg) return;
+      svg.innerHTML = '';
+
+      const bg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      bg.setAttribute('cx', '0'); bg.setAttribute('cy', '0'); bg.setAttribute('r', '180');
+      bg.setAttribute('fill', '#ffffff');
+      bg.setAttribute('stroke', '#0284c7');
+      bg.setAttribute('stroke-width', '8');
+      svg.appendChild(bg);
+
+      const ticksGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      for (let i = 0; i < 60; i++) {
+        const angle = i * 6;
+        const rad = (angle - 90) * Math.PI / 180;
+        const isMajor = (i % 5 === 0);
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', (172 * Math.cos(rad)).toFixed(2));
+        line.setAttribute('y1', (172 * Math.sin(rad)).toFixed(2));
+        line.setAttribute('x2', ((isMajor ? 152 : 162) * Math.cos(rad)).toFixed(2));
+        line.setAttribute('y2', ((isMajor ? 152 : 162) * Math.sin(rad)).toFixed(2));
+        line.setAttribute('stroke', isMajor ? '#1e293b' : '#cbd5e1');
+        line.setAttribute('stroke-width', isMajor ? '3' : '1.5');
+        ticksGroup.appendChild(line);
+      }
+      svg.appendChild(ticksGroup);
+
+      const numsGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      for (let i = 1; i <= 12; i++) {
+        const rad = (i * 30 - 90) * Math.PI / 180;
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', (132 * Math.cos(rad)).toFixed(2));
+        text.setAttribute('y', (132 * Math.sin(rad)).toFixed(2));
+        text.setAttribute('font-family', "'M PLUS Rounded 1c', sans-serif");
+        text.setAttribute('font-size', '28');
+        text.setAttribute('font-weight', '800');
+        text.setAttribute('fill', '#0f172a');
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'central');
+        text.textContent = i;
+        numsGroup.appendChild(text);
+      }
+      svg.appendChild(numsGroup);
+
+      if (isMasked) {
+        const maskGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        maskGroup.setAttribute('cursor', 'pointer');
+        maskGroup.onclick = () => {
+          if (clockType === 'start') {
+            startRevealed = true;
+            startDigitalVisible = true;
+          }
+          if (clockType === 'end') {
+            endRevealed = true;
+            endDigitalVisible = true;
+          }
+          renderAllClocks();
+        };
+
+        const maskCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        maskCircle.setAttribute('cx', '0'); maskCircle.setAttribute('cy', '0');
+        maskCircle.setAttribute('r', '178');
+        maskCircle.setAttribute('fill', '#ffffff');
+
+        const qText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        qText.setAttribute('x', '0'); qText.setAttribute('y', '10');
+        qText.setAttribute('font-family', "'M PLUS Rounded 1c', sans-serif");
+        qText.setAttribute('font-size', '120');
+        qText.setAttribute('font-weight', '900');
+        qText.setAttribute('fill', '#0284c7');
+        qText.setAttribute('text-anchor', 'middle');
+        qText.setAttribute('dominant-baseline', 'central');
+        qText.textContent = '？';
+
+        maskGroup.appendChild(maskCircle);
+        maskGroup.appendChild(qText);
+        svg.appendChild(maskGroup);
+        return;
+      }
+
+      let cTotalMinutes = totalMinutes % (12 * 60);
+      if (cTotalMinutes < 0) cTotalMinutes += 12 * 60;
+      let cMin = cTotalMinutes % 60;
+      let cHourDeg = (cTotalMinutes / 60) * 30;
+
+      const hHand = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      hHand.setAttribute('x1', '0'); hHand.setAttribute('y1', '0');
+      hHand.setAttribute('x2', '0'); hHand.setAttribute('y2', '-80');
+      hHand.setAttribute('stroke', '#1e293b');
+      hHand.setAttribute('stroke-width', '8');
+      hHand.setAttribute('stroke-linecap', 'round');
+      hHand.setAttribute('transform', `rotate(${cHourDeg})`);
+      svg.appendChild(hHand);
+
+      const mHand = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      mHand.setAttribute('x1', '0'); mHand.setAttribute('y1', '0');
+      mHand.setAttribute('x2', '0'); mHand.setAttribute('y2', '-130');
+      mHand.setAttribute('stroke', '#e11d48');
+      mHand.setAttribute('stroke-width', '6');
+      mHand.setAttribute('stroke-linecap', 'round');
+      mHand.setAttribute('transform', `rotate(${cMin * 6})`);
+      svg.appendChild(mHand);
+
+      const cap = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      cap.setAttribute('cx', '0'); cap.setAttribute('cy', '0'); cap.setAttribute('r', '8');
+      cap.setAttribute('fill', '#e11d48');
+      svg.appendChild(cap);
+    }
+
+    function renderCenterClock(svgId, startMins, endMins) {
+      const svg = document.getElementById(svgId);
+      if (!svg) return;
+      svg.innerHTML = '';
+
+      const bg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      bg.setAttribute('cx', '0'); bg.setAttribute('cy', '0'); bg.setAttribute('r', '180');
+      bg.setAttribute('fill', '#ffffff');
+      bg.setAttribute('stroke', '#f97316');
+      bg.setAttribute('stroke-width', '8');
+      svg.appendChild(bg);
+
+      const ticksGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      for (let i = 0; i < 60; i++) {
+        const angle = i * 6;
+        const rad = (angle - 90) * Math.PI / 180;
+        const isMajor = (i % 5 === 0);
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', (172 * Math.cos(rad)).toFixed(2));
+        line.setAttribute('y1', (172 * Math.sin(rad)).toFixed(2));
+        line.setAttribute('x2', ((isMajor ? 152 : 162) * Math.cos(rad)).toFixed(2));
+        line.setAttribute('y2', ((isMajor ? 152 : 162) * Math.sin(rad)).toFixed(2));
+        line.setAttribute('stroke', isMajor ? '#1e293b' : '#cbd5e1');
+        line.setAttribute('stroke-width', isMajor ? '3' : '1.5');
+        ticksGroup.appendChild(line);
+      }
+      svg.appendChild(ticksGroup);
+
+      const numsGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      for (let i = 1; i <= 12; i++) {
+        const rad = (i * 30 - 90) * Math.PI / 180;
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', (132 * Math.cos(rad)).toFixed(2));
+        text.setAttribute('y', (132 * Math.sin(rad)).toFixed(2));
+        text.setAttribute('font-family', "'M PLUS Rounded 1c', sans-serif");
+        text.setAttribute('font-size', '28');
+        text.setAttribute('font-weight', '800');
+        text.setAttribute('fill', '#0f172a');
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'central');
+        text.textContent = i;
+        numsGroup.appendChild(text);
+      }
+      svg.appendChild(numsGroup);
+
+      if (centerClockState === 0) {
+        const maskGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const maskCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        maskCircle.setAttribute('cx', '0'); maskCircle.setAttribute('cy', '0');
+        maskCircle.setAttribute('r', '178');
+        maskCircle.setAttribute('fill', '#ffffff');
+
+        const qText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        qText.setAttribute('x', '0'); qText.setAttribute('y', '10');
+        qText.setAttribute('font-family', "'M PLUS Rounded 1c', sans-serif");
+        qText.setAttribute('font-size', '120');
+        qText.setAttribute('font-weight', '900');
+        qText.setAttribute('fill', '#ea580c');
+        qText.setAttribute('text-anchor', 'middle');
+        qText.setAttribute('dominant-baseline', 'central');
+        qText.textContent = '？';
+
+        maskGroup.appendChild(maskCircle);
+        maskGroup.appendChild(qText);
+        svg.appendChild(maskGroup);
+        return;
+      }
+
+      let startM = Math.round(startMins);
+      let endM = Math.round(endMins);
+
+      let activeTarget = blankTarget;
+      if (currentMode === 'quiz' && quizList[currentQuizIndex]) {
+        activeTarget = quizList[currentQuizIndex].target;
+      }
+
+      let isRewind = (activeTarget === 'start');
+      let fillColor = isRewind ? 'rgba(59, 130, 246, 0.35)' : 'rgba(249, 115, 22, 0.35)';
+      let strokeColor = isRewind ? 'rgba(37, 99, 235, 0.6)' : 'rgba(234, 88, 12, 0.6)';
+
+      let baseTotalM = isRewind ? (endM % (12 * 60)) : (startM % (12 * 60));
+      if (baseTotalM < 0) baseTotalM += 12 * 60;
+
+      let absDiff = Math.abs(endM - startM);
+      let currentElapsedM = absDiff * animProgress;
+      if (centerClockState === 1) {
+        currentElapsedM = 0;
+      }
+
+      if (centerClockState === 2 && currentElapsedM > 0) {
+        const baseMin = baseTotalM % 60;
+        
+        const drawSector = (startMinute, durationMins, radius, rewind) => {
+          if (durationMins <= 0) return;
+          
+          let startAngleDeg = (startMinute * 6) - 90;
+          let sweepAngleDeg = durationMins * 6 * (rewind ? -1 : 1);
+
+          let endAngleDeg = startAngleDeg + sweepAngleDeg;
+
+          let startRad = startAngleDeg * Math.PI / 180;
+          let endRad = endAngleDeg * Math.PI / 180;
+
+          const x1 = (radius * Math.cos(startRad)).toFixed(2);
+          const y1 = (radius * Math.sin(startRad)).toFixed(2);
+          const x2 = (radius * Math.cos(endRad)).toFixed(2);
+          const y2 = (radius * Math.sin(endRad)).toFixed(2);
+
+          let sweepFlag = rewind ? 0 : 1;
+          let largeArc = Math.abs(sweepAngleDeg) >= 180 ? 1 : 0;
+
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          let d = '';
+
+          if (Math.abs(sweepAngleDeg) >= 360) {
+            d = `M 0 -${radius} A ${radius} ${radius} 0 1 ${sweepFlag} 0 ${radius} A ${radius} ${radius} 0 1 ${sweepFlag} 0 -${radius} Z`;
+          } else {
+            d = `M 0 0 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} ${sweepFlag} ${x2} ${y2} Z`;
+          }
+
+          path.setAttribute('d', d);
+          path.setAttribute('fill', fillColor);
+          path.setAttribute('stroke', strokeColor);
+          path.setAttribute('stroke-width', '2');
+          svg.appendChild(path);
+        };
+
+        // 1周目 (0〜60分): 半径 168
+        let lap1Mins = Math.min(currentElapsedM, 60);
+        drawSector(baseMin, lap1Mins, 168, isRewind);
+
+        // 2周目 (60〜120分): 半径 112 (2/3)
+        if (currentElapsedM > 60) {
+          let lap2Mins = Math.min(currentElapsedM - 60, 60);
+          drawSector(baseMin, lap2Mins, 112, isRewind);
+        }
+
+        // 3周目 (120分〜): 半径 56 (1/3)
+        if (currentElapsedM > 120) {
+          let lap3Mins = currentElapsedM - 120;
+          drawSector(baseMin, lap3Mins, 56, isRewind);
+        }
+
+        const ghostMHand = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        ghostMHand.setAttribute('x1', '0'); ghostMHand.setAttribute('y1', '0');
+        ghostMHand.setAttribute('x2', '0'); ghostMHand.setAttribute('y2', '-130');
+        ghostMHand.setAttribute('stroke', strokeColor);
+        ghostMHand.setAttribute('stroke-width', '4');
+        ghostMHand.setAttribute('stroke-dasharray', '6 4');
+        ghostMHand.setAttribute('stroke-linecap', 'round');
+        ghostMHand.setAttribute('transform', `rotate(${baseMin * 6})`);
+        svg.appendChild(ghostMHand);
+      }
+
+      let displayTotalM = isRewind ? (baseTotalM - currentElapsedM) : (baseTotalM + currentElapsedM);
+      let cMin = (displayTotalM % 60 + 60) % 60;
+      let cHourDeg = (displayTotalM / 60) * 30;
+
+      const hHand = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      hHand.setAttribute('x1', '0'); hHand.setAttribute('y1', '0');
+      hHand.setAttribute('x2', '0'); hHand.setAttribute('y2', '-80');
+      hHand.setAttribute('stroke', '#1e293b');
+      hHand.setAttribute('stroke-width', '8');
+      hHand.setAttribute('stroke-linecap', 'round');
+      hHand.setAttribute('transform', `rotate(${cHourDeg})`);
+      svg.appendChild(hHand);
+
+      const mHand = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      mHand.setAttribute('x1', '0'); mHand.setAttribute('y1', '0');
+      mHand.setAttribute('x2', '0'); mHand.setAttribute('y2', '-130');
+      mHand.setAttribute('stroke', '#e11d48');
+      mHand.setAttribute('stroke-width', '6');
+      mHand.setAttribute('stroke-linecap', 'round');
+      mHand.setAttribute('transform', `rotate(${cMin * 6})`);
+      svg.appendChild(mHand);
+
+      const cap = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      cap.setAttribute('cx', '0'); cap.setAttribute('cy', '0'); cap.setAttribute('r', '8');
+      cap.setAttribute('fill', '#e11d48');
+      svg.appendChild(cap);
+    }
+
+    function renderDigitalBox(containerId, totalMinutes, isMasked, type) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (isMasked) {
+        const maskedDiv = document.createElement('div');
+        maskedDiv.className = 'masked-digital-box';
+        maskedDiv.textContent = '？';
+        maskedDiv.onclick = () => {
+          if (type === 'start') {
+            startDigitalVisible = true;
+            startRevealed = true;
+          }
+          if (type === 'end') {
+            endDigitalVisible = true;
+            endRevealed = true;
+          }
+          renderAllClocks();
+        };
+        container.appendChild(maskedDiv);
+        return;
+      }
+
+      let roundedM = Math.round(totalMinutes);
+      let h = Math.floor(roundedM / 60) % 12;
+      if (h === 0) h = 12;
+      let m = roundedM % 60;
+      let mStr = m < 10 ? '0' + m : '' + m;
+
+      const hInput = document.createElement('input');
+      hInput.type = 'number';
+      hInput.className = 'digital-input';
+      hInput.value = h;
+      hInput.onchange = (e) => {
+        let val = parseInt(e.target.value) || 12;
+        if (val < 1) val = 1;
+        if (val > 12) val = 12;
+        let currentH = Math.floor(roundedM / 60) % 12;
+        if (currentH === 0) currentH = 12;
+        let diffH = val - currentH;
+        if (type === 'start') {
+          startTimeMinutes += diffH * 60;
+          if (startTimeMinutes >= endTimeMinutes) {
+            endTimeMinutes = startTimeMinutes + 1;
+          }
+          if (blankTarget === 'end') {
+            endRevealed = false;
+            endDigitalVisible = false;
+          }
+        } else {
+          endTimeMinutes += diffH * 60;
+          if (endTimeMinutes <= startTimeMinutes) {
+            startTimeMinutes = endTimeMinutes - 1;
+          }
+          if (blankTarget === 'start') {
+            startRevealed = false;
+            startDigitalVisible = false;
+          }
+        }
+        resetElapsedAndCenterState();
+        renderAllClocks();
+      };
+
+      const colon = document.createElement('span');
+      colon.style.fontSize = '3rem';
+      colon.style.fontWeight = '700';
+      colon.style.color = '#0f172a';
+      colon.textContent = ':';
+
+      const mInput = document.createElement('input');
+      mInput.type = 'number';
+      mInput.className = 'digital-input';
+      mInput.value = mStr;
+      mInput.onchange = (e) => {
+        let val = parseInt(e.target.value);
+        if (isNaN(val)) val = 0;
+        let currentM = roundedM % 60;
+        let hourDiff = 0;
+
+        if (val > 59) {
+          val = 0;
+          hourDiff = 1;
+        } else if (val < 0) {
+          val = 59;
+          hourDiff = -1;
+        }
+
+        let diffM = (val - currentM) + (hourDiff * 60);
+        if (type === 'start') {
+          startTimeMinutes += diffM;
+          if (startTimeMinutes >= endTimeMinutes) {
+            endTimeMinutes = startTimeMinutes + 1;
+          }
+          if (blankTarget === 'end') {
+            endRevealed = false;
+            endDigitalVisible = false;
+          }
+        } else {
+          endTimeMinutes += diffM;
+          if (endTimeMinutes <= startTimeMinutes) {
+            startTimeMinutes = endTimeMinutes - 1;
+          }
+          if (blankTarget === 'start') {
+            startRevealed = false;
+            startDigitalVisible = false;
+          }
+        }
+        resetElapsedAndCenterState();
+        renderAllClocks();
+      };
+
+      container.appendChild(hInput);
+      container.appendChild(colon);
+      container.appendChild(mInput);
+
+      container.onclick = (e) => {
+        if (e.target === container) {
+          if (type === 'start') startDigitalVisible = false;
+          if (type === 'end') endDigitalVisible = false;
+          renderAllClocks();
+        }
+      };
+    }
+
+    function onBadgeClick(e) {
+      e.stopPropagation();
+      if (currentMode === 'move' && (blankTarget === 'start' || blankTarget === 'end')) {
+        const dd = document.getElementById('elapsedDropdown');
+        if (dd) {
+          let isClosed = (dd.style.display === 'none' || dd.style.display === '');
+          if (isClosed) {
+            dd.style.display = 'grid';
+          } else {
+            dd.style.display = 'none';
+          }
+        }
+      } else {
+        badgeRevealed = true;
+        renderAllClocks();
+      }
+    }
+
+    function triggerCenterClockClick() {
+      let activeTarget = blankTarget;
+      if (currentMode === 'quiz' && quizList[currentQuizIndex]) {
+        activeTarget = quizList[currentQuizIndex].target;
+      }
+
+      if (currentMode === 'quiz') {
+        if (centerClockState === 0) {
+          centerClockState = 1;
+        } else if (centerClockState === 1) {
+          centerClockState = 2;
+          triggerCenterAnimation();
+        } else {
+          triggerCenterAnimation();
+        }
+      } else {
+        if (centerClockState === 0) {
+          centerClockState = 1;
+        } else if (centerClockState === 1) {
+          centerClockState = 2;
+          triggerCenterAnimation();
+        } else {
+          triggerCenterAnimation();
+        }
+      }
+      renderAllClocks();
+    }
+
+    function triggerCenterAnimation() {
+      if (isAnimating) return;
+      isAnimating = true;
+      animProgress = 0.0;
+      let startTime = null;
+      let duration = 1440;
+
+      function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        let elapsed = timestamp - startTime;
+        animProgress = Math.min(elapsed / duration, 1.0);
+        renderCenterClock('clockSvgCenter', startTimeMinutes, endTimeMinutes);
+        if (animProgress < 1.0) {
+          requestAnimationFrame(step);
+        } else {
+          isAnimating = false;
+        }
+      }
+      requestAnimationFrame(step);
+    }
+
+    function closeElapsedDropdown() {
+      const dd = document.getElementById('elapsedDropdown');
+      if (dd) dd.style.display = 'none';
+    }
+
+    function selectElapsedMinutes(deltaMinutes, labelText) {
+      closeElapsedDropdown();
+      if (blankTarget === 'start') {
+        startTimeMinutes = endTimeMinutes - deltaMinutes;
+      } else if (blankTarget === 'end') {
+        endTimeMinutes = startTimeMinutes + deltaMinutes;
+      }
+      selectedDropdownText = labelText || null;
+      badgeRevealed = false;
+      centerClockState = 0;
+      renderAllClocks();
+    }
+
+    function resetElapsedAndCenterState() {
+      badgeRevealed = false;
+      selectedDropdownText = null;
+      centerClockState = 0;
+    }
+
+    /* 描画更新をフレーム（60fps）に同期させてスムーズ化 */
+    function scheduleRender() {
+      if (!renderPending) {
+        renderPending = true;
+        requestAnimationFrame(() => {
+          renderAllClocks();
+          renderPending = false;
+        });
+      }
+    }
+
+    function setupClockDragListeners(svgId, type) {
+      const svg = document.getElementById(svgId);
+      if (!svg) return;
+
+      function getAngleDiff(a, b) {
+        let diff = Math.abs(a - b) % 360;
+        return diff > 180 ? 360 - diff : diff;
+      }
+
+      function getTouchDetails(e) {
+        const rect = svg.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const clientX = e.clientX;
+        const clientY = e.clientY;
+        const dx = clientX - cx;
+        const dy = clientY - cy;
+        let deg = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+        if (deg < 0) deg += 360;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        return { deg, dist, radiusRatio: dist / (rect.width / 2) };
+      }
+
+      function onPointerDown(e) {
+        if (isPinching) return; // ピンチ操作中は針ドラッグ無効
+        if ((type === 'start' && !startRevealed) || (type === 'end' && !endRevealed)) {
+          return;
+        }
+
+        const details = getTouchDetails(e);
+
+        let totalMins = (type === 'start') ? startTimeMinutes : endTimeMinutes;
+        let cTotalMinutes = (Math.round(totalMins) % 720 + 720) % 720;
+        let mDeg = (cTotalMinutes % 60) * 6;
+        let hDeg = (cTotalMinutes / 60) * 30;
+
+        let diffM = getAngleDiff(details.deg, mDeg);
+        let diffH = getAngleDiff(details.deg, hDeg);
+
+        // タッチ判定のエリアを広げて反応をよくする
+        let isMinuteTouched = (diffM <= 35) && (details.radiusRatio >= 0.15 && details.radiusRatio <= 1.15);
+        let isHourTouched = (diffH <= 40) && (details.radiusRatio >= 0.05 && details.radiusRatio <= 0.85);
+
+        // 盤面上のタッチであれば、直接針の上でなくても近くの針を選択して操作可能にする
+        if (!isMinuteTouched && !isHourTouched) {
+          if (details.radiusRatio <= 1.15) {
+            dragPart = (diffM <= diffH) ? 'minute' : 'hour';
+          } else {
+            return;
+          }
+        } else if (isMinuteTouched && isHourTouched) {
+          dragPart = (diffM <= diffH) ? 'minute' : 'hour';
+        } else if (isMinuteTouched) {
+          dragPart = 'minute';
+        } else {
+          dragPart = 'hour';
+        }
+
+        e.preventDefault();
+        draggingClock = type;
+        dragLastAngle = details.deg;
+
+        if (e.pointerId !== undefined && svg.setPointerCapture) {
+          try { svg.setPointerCapture(e.pointerId); } catch(err) {}
+        }
+      }
+
+      function onPointerMove(e) {
+        if (!draggingClock || draggingClock !== type || isPinching) return;
+        e.preventDefault();
+        
+        const details = getTouchDetails(e);
+
+        let currentAngle = details.deg;
+        let delta = currentAngle - dragLastAngle;
+
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+
+        if (Math.abs(delta) < 0.01) return;
+
+        let deltaMins = 0;
+        if (dragPart === 'hour') {
+          deltaMins = (delta / 360) * 720;
+        } else {
+          deltaMins = (delta / 360) * 60;
+        }
+
+        if (type === 'start') {
+          startTimeMinutes += deltaMins;
+          if (blankTarget !== 'start') {
+            if (startTimeMinutes > endTimeMinutes - 1) {
+              endTimeMinutes = startTimeMinutes + 1;
+            }
+          }
+          if (blankTarget === 'end') {
+            endRevealed = false;
+            endDigitalVisible = false;
+          }
+        } else {
+          endTimeMinutes += deltaMins;
+          if (blankTarget !== 'end') {
+            if (endTimeMinutes < startTimeMinutes + 1) {
+              startTimeMinutes = endTimeMinutes - 1;
+            }
+          }
+          if (blankTarget === 'start') {
+            startRevealed = false;
+            startDigitalVisible = false;
+          }
+        }
+
+        dragLastAngle = currentAngle;
+        resetElapsedAndCenterState();
+        scheduleRender(); // アニメーションフレーム同期で滑らかに更新
+      }
+
+      function onPointerUp(e) {
+        if (draggingClock === type) {
+          if (type === 'start') {
+            startTimeMinutes = Math.round(startTimeMinutes);
+          } else {
+            endTimeMinutes = Math.round(endTimeMinutes);
+          }
+          draggingClock = null;
+
+          if (e.pointerId !== undefined && svg.releasePointerCapture) {
+            try { svg.releasePointerCapture(e.pointerId); } catch(err) {}
+          }
+          renderAllClocks();
+        }
+      }
+
+      svg.addEventListener('pointerdown', onPointerDown);
+      svg.addEventListener('pointermove', onPointerMove);
+      svg.addEventListener('pointerup', onPointerUp);
+      svg.addEventListener('pointercancel', onPointerUp);
+    }
+
+    function switchMode(mode) {
+      currentMode = mode;
+      document.getElementById('btnModeMove').classList.toggle('active', mode === 'move');
+      document.getElementById('btnModeQuiz').classList.toggle('active', mode === 'quiz');
+
+      const btnRandom = document.getElementById('btnTargetRandom');
+      const quizControls = document.getElementById('quizControls');
+
+      if (mode === 'move') {
+        btnRandom.style.visibility = 'hidden';
+        quizControls.style.visibility = 'hidden';
+        
+        startRevealed = (blankTarget !== 'start');
+        endRevealed = (blankTarget !== 'end');
+        startDigitalVisible = false;
+        endDigitalVisible = false;
+        badgeRevealed = false;
+        selectedDropdownText = null;
+        centerClockState = 0;
+        renderAllClocks();
+      } else {
+        btnRandom.style.visibility = 'visible';
+        quizControls.style.visibility = 'visible';
+        generateQuizList(blankTarget);
+        loadQuiz(0);
+      }
+    }
+
+    function setBlankTarget(target) {
+      blankTarget = target;
+      selectedDropdownText = null;
+
+      if (currentMode === 'quiz') {
+        generateQuizList(target);
+        loadQuiz(0);
+      } else {
+        startRevealed = (target !== 'start');
+        endRevealed = (target !== 'target' && target !== 'end' ? true : false);
+        if (target === 'end') endRevealed = false;
+        
+        startDigitalVisible = false;
+        endDigitalVisible = false;
+        badgeRevealed = false;
+        centerClockState = 0;
+        renderAllClocks();
+      }
+    }
+
+    function generateQuizList(targetCourse) {
+      quizList = [];
+      const normalIntervals = [15, 30, 45, 60];
+      const allIntervals = [15, 30, 45, 60, 75, 90];
+      let longIntervalCount = 0;
+      let lastDelta = null;
+
+      for (let i = 0; i < 10; i++) {
+        let actualTarget = targetCourse;
+        if (targetCourse === 'random') {
+          const randArr = ['start', 'elapsed', 'end'];
+          actualTarget = randArr[Math.floor(Math.random() * randArr.length)];
+        }
+
+        let startHour = 7 + Math.floor(Math.random() * 5); // 7:00 ~ 11:00
+        let startMin = Math.floor(Math.random() * 12) * 5; // 5分単位
+        let startTotal = startHour * 60 + startMin;
+
+        // 1～4問目(i=0~3)は1時間以内。5問目以降(i>=4)かつ合計2回未満なら75, 90分も出題候補に含む
+        let availableIntervals = normalIntervals;
+        if (i >= 4 && longIntervalCount < 2) {
+          availableIntervals = allIntervals;
+        }
+
+        // 直前の問題と同じ経過時間(delta)が連続しないように調整
+        let candidateIntervals = availableIntervals.filter(d => d !== lastDelta);
+        if (candidateIntervals.length === 0) {
+          candidateIntervals = availableIntervals;
+        }
+
+        let delta = candidateIntervals[Math.floor(Math.random() * candidateIntervals.length)];
+        if (delta === 75 || delta === 90) {
+          longIntervalCount++;
+        }
+        lastDelta = delta;
+
+        let endTotal = startTotal + delta;
+
+        quizList.push({
+          target: actualTarget,
+          startMins: startTotal,
+          endMins: endTotal
+        });
+      }
+    }
+
+    function loadQuiz(index) {
+      currentQuizIndex = index;
+      document.getElementById('quizCounterText').innerHTML = `問題<br><span class="text-sm font-bold">${currentQuizIndex + 1} / 10</span>`;
+
+      const q = quizList[currentQuizIndex];
+      let curTarget = q.target;
+      startTimeMinutes = q.startMins;
+      endTimeMinutes = q.endMins;
+
+      selectedDropdownText = null;
+      centerClockState = 0;
+
+      if (curTarget === 'elapsed') {
+        badgeRevealed = false;
+        startRevealed = true;
+        endRevealed = true;
+        startDigitalVisible = true;
+        endDigitalVisible = true;
+      } else if (curTarget === 'end') {
+        badgeRevealed = true;
+        startRevealed = true;
+        endRevealed = false;
+        startDigitalVisible = true;
+        endDigitalVisible = false;
+      } else if (curTarget === 'start') {
+        badgeRevealed = true;
+        startRevealed = false;
+        endRevealed = true;
+        startDigitalVisible = false;
+        endDigitalVisible = true;
+      }
+
+      renderAllClocks();
+    }
+
+    function prevQuiz() {
+      if (currentQuizIndex > 0) {
+        loadQuiz(currentQuizIndex - 1);
+      }
+    }
+
+    function nextQuiz() {
+      if (currentQuizIndex < quizList.length - 1) {
+        loadQuiz(currentQuizIndex + 1);
+      } else {
+        generateQuizList(blankTarget);
+        loadQuiz(0);
+      }
+    }
+  </script>
+
+</body>
+</html>
